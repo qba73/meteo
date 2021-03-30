@@ -1,2 +1,7 @@
-# yrno
-Go library for the Norwegian Meteorological Institute and the Norwegian Broadcasting Corporation.
+# meteo
+
+Go SDK for the weather and meteorological forecast from Yr.
+
+Disclaimer:
+
+Weather forecast from Yr, delivered by the Norwegian Meteorological Institute and NRK
