@@ -7,4 +7,5 @@ Go client library for the weather and meteorological forecast from [Yr](https://
 
 Disclaimer:
 
-Weather forecast from Yr, delivered by the Norwegian Meteorological Institute and NRK
+Weather forecast from Yr, delivered by the Norwegian Meteorological Institute and NRK.
+
