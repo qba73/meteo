@@ -1,3 +1,3 @@
 module github.com/qba73/meteo
 
-go 1.16
+go 1.17
