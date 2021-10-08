@@ -3,7 +3,7 @@
 
 # meteo
 
-Go client li brary for the weather and meteorological forecast from [Yr](https://www.yr.no/en).
+Go client library for the weather and meteorological forecast from [Yr](https://www.yr.no/en).
 
 Disclaimer:
 
