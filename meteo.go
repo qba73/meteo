@@ -16,7 +16,7 @@ type Client struct {
 	HTTPClient *http.Client
 }
 
-// NewClient knows how to construct a new meteo client.
+// NewClient knows how to create Meteo service client.
 func NewClient(apikey string) *Client {
 	return &Client{
 		BaseURL: baseURL,
@@ -26,15 +26,3 @@ func NewClient(apikey string) *Client {
 		},
 	}
 }
-
-/*
-type errorResponse struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-type successResponse struct {
-	Code int         `json:"code"`
-	Data interface{} `json:"data"`
-}
-*/

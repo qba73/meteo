@@ -8,5 +8,4 @@ import (
 
 func TestNewClient(t *testing.T) {
 	meteo.NewClient("APIKEY")
-
 }

@@ -80,4 +80,3 @@ endif
 		${GO_DOCKER_IMAGE} ./cc-test-reporter after-build --prefix ${PREFIX}
 
 test-ci: _before-cc testdocker _after-cc
-
