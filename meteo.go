@@ -1,28 +1,33 @@
 package meteo
 
 import (
-	"net/http"
-	"time"
+	"fmt"
+	"os"
+	"strings"
 )
 
 const (
-	baseURL = "https://"
+	userAgent = "Meteo/0.1 https://github.com/qba73/meteo"
 )
 
-// Client represents YR.no weather client.
-type Client struct {
-	apiKey     string
-	BaseURL    string
-	HTTPClient *http.Client
+// Weather represents weather conditions
+// in a geographical region.
+type Weather struct {
+	Summary string
+	Temp    float64
 }
 
-// NewClient knows how to create Meteo service client.
-func NewClient(apikey string) *Client {
-	return &Client{
-		BaseURL: baseURL,
-		apiKey:  apikey,
-		HTTPClient: &http.Client{
-			Timeout: time.Second * 10,
-		},
+// String implements stringer interface.
+func (w Weather) String() string {
+	return fmt.Sprintf("%s %.1f°C", strings.Title(w.Summary), w.Temp)
+}
+
+func RunCLI() {
+	c := NewNorwayClient()
+	w, err := c.GetForecast(53.2, -6.2)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
+	fmt.Println(w)
 }
