@@ -63,7 +63,7 @@ func TestGetCoordinatesSingleGeoNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCoordinates(\"Castlebar\", \"IE\") got err %v", err)
 	}
-	want := meteo.PlaceCoordinates{
+	want := meteo.Place{
 		Lng:         -9.3,
 		Lat:         53.85,
 		PlaceName:   "Castlebar",

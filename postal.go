@@ -13,8 +13,8 @@ const (
 	baseURLGeoNames = "http://api.geonames.org"
 )
 
-// PlaceCoordinates represents response from GeoNames web service.
-type PlaceCoordinates struct {
+// Place represents response from GeoNames web service.
+type Place struct {
 	Lat         float64
 	Lng         float64
 	CountryCode string
@@ -77,30 +77,30 @@ func NewGeoNamesClient(username string, opts ...geoNameOption) (*GeoNamesClient,
 
 // GetCoordinates knows how to retrieve lat and long coordinates
 // for the given place name and country.
-func (g GeoNamesClient) GetCoordinates(placeName, countryCode string) (PlaceCoordinates, error) {
+func (g GeoNamesClient) GetCoordinates(placeName, countryCode string) (Place, error) {
 	u, err := g.makeURL(placeName, countryCode)
 	if err != nil {
-		return PlaceCoordinates{}, err
+		return Place{}, err
 	}
 	req, err := g.prepareRequest(u)
 	if err != nil {
-		return PlaceCoordinates{}, err
+		return Place{}, err
 	}
 	res, err := g.HTTPClient.Do(req)
 	if err != nil {
-		return PlaceCoordinates{}, err
+		return Place{}, err
 	}
 	defer res.Body.Close()
 
 	var co coordinates
 	if err := json.NewDecoder(res.Body).Decode(&co); err != nil {
-		return PlaceCoordinates{}, fmt.Errorf("decoding response %w", err)
+		return Place{}, fmt.Errorf("decoding response %w", err)
 	}
 	if len(co.PostalCodes) < 1 {
-		return PlaceCoordinates{}, fmt.Errorf("place %s in country %s not found", placeName, countryCode)
+		return Place{}, fmt.Errorf("place %s in country %s not found", placeName, countryCode)
 	}
 
-	pc := PlaceCoordinates{
+	pc := Place{
 		Lat:         co.PostalCodes[0].Lat,
 		Lng:         co.PostalCodes[0].Lng,
 		PlaceName:   co.PostalCodes[0].PlaceName,
@@ -135,10 +135,10 @@ func (g GeoNamesClient) prepareRequest(u string) (*http.Request, error) {
 
 // GetCoordinates knows how to get Lat and Long coordinates for
 // the given place and country using default geo client.
-func GetCoordinates(placename, countryCode, username string) (PlaceCoordinates, error) {
+func GetCoordinates(placename, countryCode, username string) (Place, error) {
 	c, err := NewGeoNamesClient(username)
 	if err != nil {
-		return PlaceCoordinates{}, err
+		return Place{}, err
 	}
 	return c.GetCoordinates(placename, countryCode)
 }

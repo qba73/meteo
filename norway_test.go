@@ -14,7 +14,11 @@ import (
 func TestCreateNewMeteoClient(t *testing.T) {
 	t.Parallel()
 	var c *meteo.NorwayClient
-	c, err := meteo.NewNorwayClient()
+	resolver, err := meteo.NewWikipediaClient("User")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err = meteo.NewNorwayClient(resolver)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,7 +27,12 @@ func TestCreateNewMeteoClient(t *testing.T) {
 
 func TestCreateNewMeteoClientWithCustomUserAgent(t *testing.T) {
 	t.Parallel()
+	resolver, err := meteo.NewWikipediaClient("User")
+	if err != nil {
+		t.Fatal(err)
+	}
 	c, err := meteo.NewNorwayClient(
+		resolver,
 		meteo.WithUserAgent("CustomClient/1.0 https://customclient.com"),
 	)
 	if err != nil {
@@ -38,7 +47,11 @@ func TestCreateNewMeteoClientWithCustomUserAgent(t *testing.T) {
 
 func TestCreateNewNorwayClientWithInvalidUserAgent(t *testing.T) {
 	t.Parallel()
-	_, err := meteo.NewNorwayClient(meteo.WithUserAgent(""))
+	resolver, err := meteo.NewWikipediaClient("User")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = meteo.NewNorwayClient(resolver, meteo.WithUserAgent(""))
 	if err == nil {
 		t.Errorf("invalid user agent string should return error")
 	}
@@ -46,23 +59,40 @@ func TestCreateNewNorwayClientWithInvalidUserAgent(t *testing.T) {
 
 func TestGetForecast(t *testing.T) {
 	t.Parallel()
-	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/weatherapi/locationforecast/2.0/compact", func(rw http.ResponseWriter, r *http.Request) {
 		f, err := os.Open("testdata/response-compact.json")
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer f.Close()
 		io.Copy(rw, f)
-	}))
+	})
+	mux.HandleFunc("/wikipediaSearchJSON", func(rw http.ResponseWriter, r *http.Request) {
+		f, err := os.Open("testdata/response-geoname-wikipedia.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		io.Copy(rw, f)
+	})
+	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
-	client, err := meteo.NewNorwayClient()
+	resolver, err := meteo.NewWikipediaClient("UserName")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.BaseURL = ts.URL
+
+	client, err := meteo.NewNorwayClient(resolver)
 	if err != nil {
 		t.Fatal(err)
 	}
 	client.BaseURL = ts.URL
 
-	got, err := client.GetForecast(53.3, -6.2)
+	got, err := client.GetForecast("Castlebar", "IE")
 	if err != nil {
 		t.Errorf("error getting forecast data, %v", err)
 	}

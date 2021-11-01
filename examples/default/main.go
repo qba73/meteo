@@ -8,8 +8,8 @@ import (
 )
 
 func main() {
-	// Get weather status for the given lat, lon:
-	weather, err := meteo.GetWeather(53.2, -6.2)
+	// Get weather status for city Castlebar in Ireland:
+	weather, err := meteo.GetWeather("Castlebar", "IE")
 	if err != nil {
 		log.Println(err)
 	}

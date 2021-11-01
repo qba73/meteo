@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 )
 
@@ -73,15 +74,17 @@ type NorwayClient struct {
 	UA         string
 	BaseURL    string
 	HTTPClient *http.Client
+	Resolver   NameResolver
 }
 
-func NewNorwayClient(opts ...option) (*NorwayClient, error) {
+func NewNorwayClient(resolver NameResolver, opts ...option) (*NorwayClient, error) {
 	c := NorwayClient{
 		BaseURL: baseURL,
 		UA:      userAgent,
 		HTTPClient: &http.Client{
 			Timeout: time.Second * 5,
 		},
+		Resolver: resolver,
 	}
 
 	for _, opt := range opts {
@@ -90,15 +93,22 @@ func NewNorwayClient(opts ...option) (*NorwayClient, error) {
 		}
 	}
 	return &c, nil
-
 }
 
-func (c NorwayClient) GetForecast(lat, lon float64) (Weather, error) {
+func (c NorwayClient) GetForecast(place, country string) (Weather, error) {
+	p, err := c.Resolver.GetCoordinates(place, country)
+	if err != nil {
+		return Weather{}, err
+	}
+	return c.getForecast(p.Lat, p.Lng)
+}
+
+func (c NorwayClient) getForecast(lat, lon float64) (Weather, error) {
 	u, err := c.makeURL(lat, lon)
 	if err != nil {
 		return Weather{}, err
 	}
-	req, err := c.prepareRequest(u)
+	req, err := prepareRequest(u)
 	if err != nil {
 		return Weather{}, err
 	}
@@ -135,7 +145,7 @@ func (c NorwayClient) makeURL(lat, lon float64) (string, error) {
 	return base.String(), nil
 }
 
-func (c NorwayClient) prepareRequest(u string) (*http.Request, error) {
+func prepareRequest(u string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
@@ -146,12 +156,16 @@ func (c NorwayClient) prepareRequest(u string) (*http.Request, error) {
 }
 
 // GetWeather returns current weather for given
-// Lat and Long using default client for the Norwegian
+// place and country using default client for the Norwegian
 // meteorological Institute.
-func GetWeather(lat, lon float64) (Weather, error) {
-	c, err := NewNorwayClient()
+func GetWeather(place, country string) (Weather, error) {
+	resolver, err := NewWikipediaClient(os.Getenv("GEO_USERNAME"))
 	if err != nil {
 		return Weather{}, err
 	}
-	return c.GetForecast(lat, lon)
+	c, err := NewNorwayClient(resolver)
+	if err != nil {
+		return Weather{}, err
+	}
+	return c.GetForecast(place, country)
 }

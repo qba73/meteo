@@ -22,13 +22,21 @@ func (w Weather) String() string {
 	return fmt.Sprintf("%s %.1f°C", strings.Title(w.Summary), w.Temp)
 }
 
+type NameResolver interface {
+	GetCoordinates(placeName, country string) (Place, error)
+}
+
 func RunCLI() {
-	c, err := NewNorwayClient()
+	resolver, err := NewWikipediaClient(os.Getenv("GEO_USERNAME"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	c, err := NewNorwayClient(resolver)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	w, err := c.GetForecast(53.2, -6.2)
+	w, err := c.GetForecast("Castlebar", "IE")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
