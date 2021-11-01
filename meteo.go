@@ -27,7 +27,8 @@ type NameResolver interface {
 }
 
 func RunCLI() {
-	resolver, err := NewWikipediaClient(os.Getenv("GEO_USERNAME"))
+	uname := os.Getenv("GEO_USERNAME")
+	resolver, err := NewWikipediaClient(uname)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}

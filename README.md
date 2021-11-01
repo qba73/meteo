@@ -9,3 +9,44 @@ Disclaimer:
 
 Weather forecast from Yr, delivered by the Norwegian Meteorological Institute and NRK.
 
+# Usage
+
+## Preconditions
+
+You must register your user agent string in the [YR.NO service](https://developer.yr.no/doc/TermsOfService/) and your user name in the [GeoNames service](https://www.geonames.org/login) to use the package.
+
+
+## Installation
+```
+$ go get git@github.com:qba73/meteo.git
+```
+
+## Default
+
+Export ```GEO_USERNAME``` env var that you registered with GeoNames.org.
+
+Example:
+```
+$ export GEO_USERNAME=Jane123
+```
+Use the ```meteo``` package in your application:
+```go
+$ package main
+
+import (
+	"fmt"
+	"log"
+	"github.com/qba73/meteo"
+)
+
+func main() {
+	// Get weather status for Castlebar in Ireland:
+	weather, err := meteo.GetWeather("Castlebar", "IE")
+	if err != nil {
+		log.Println(err)
+	}
+	// Print out weather string.
+	// Example: Lightrain 8.3°C
+	fmt.Println(weather)
+}
+```
