@@ -2,6 +2,7 @@ package meteo
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -54,6 +55,18 @@ type data struct {
 	} `json:"next_1_hours"`
 }
 
+type option func(*NorwayClient) error
+
+func WithUserAgent(ua string) option {
+	return func(nc *NorwayClient) error {
+		if ua == "" {
+			return errors.New("user agent not provided")
+		}
+		nc.UA = ua
+		return nil
+	}
+}
+
 // NorwayClient represents a weather client
 // for the Norwegian Meteorological Institute.
 type NorwayClient struct {
@@ -62,14 +75,22 @@ type NorwayClient struct {
 	HTTPClient *http.Client
 }
 
-func NewNorwayClient() *NorwayClient {
-	return &NorwayClient{
+func NewNorwayClient(opts ...option) (*NorwayClient, error) {
+	c := NorwayClient{
 		BaseURL: baseURL,
 		UA:      userAgent,
 		HTTPClient: &http.Client{
 			Timeout: time.Second * 5,
 		},
 	}
+
+	for _, opt := range opts {
+		if err := opt(&c); err != nil {
+			return &NorwayClient{}, err
+		}
+	}
+	return &c, nil
+
 }
 
 func (c NorwayClient) GetForecast(lat, lon float64) (Weather, error) {
@@ -77,13 +98,10 @@ func (c NorwayClient) GetForecast(lat, lon float64) (Weather, error) {
 	if err != nil {
 		return Weather{}, err
 	}
-	req, err := http.NewRequest(http.MethodGet, u, nil)
+	req, err := c.prepareRequest(u)
 	if err != nil {
 		return Weather{}, err
 	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("User-Agent", userAgent)
-
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return Weather{}, err
@@ -91,8 +109,7 @@ func (c NorwayClient) GetForecast(lat, lon float64) (Weather, error) {
 	defer res.Body.Close()
 
 	var nf norwayForecast
-	err = json.NewDecoder(res.Body).Decode(&nf)
-	if err != nil {
+	if err := json.NewDecoder(res.Body).Decode(&nf); err != nil {
 		return Weather{}, err
 	}
 	if len(nf.Properties.Timeseries) < 1 {
@@ -118,10 +135,23 @@ func (c NorwayClient) makeURL(lat, lon float64) (string, error) {
 	return base.String(), nil
 }
 
+func (c NorwayClient) prepareRequest(u string) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("User-Agent", userAgent)
+	return req, nil
+}
+
+// GetWeather returns current weather for given
+// Lat and Long using default client for the Norwegian
+// meteorological Institute.
 func GetWeather(lat, lon float64) (Weather, error) {
-	w, err := NewNorwayClient().GetForecast(lat, lon)
+	c, err := NewNorwayClient()
 	if err != nil {
 		return Weather{}, err
 	}
-	return w, nil
+	return c.GetForecast(lat, lon)
 }
