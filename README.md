@@ -6,7 +6,7 @@
 
 # meteo
 
-Go client library for the weather and meteorological forecast from [Yr](https://www.yr.no/en).
+Meteo is a Go client library for the weather and meteorological forecast from [Yr](https://www.yr.no/en).
 
 Disclaimer:
 
@@ -53,3 +53,4 @@ func main() {
 	fmt.Println(weather)
 }
 ```
+
