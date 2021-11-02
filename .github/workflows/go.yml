@@ -15,6 +15,6 @@ jobs:
 
       - name: Run unit tests
         run: |
-          make clean test-ci
+          make test-ci
         env:
           CC_TEST_REPORTER_ID: ${{secrets.CC_TEST_REPORTER_ID}}

@@ -58,6 +58,9 @@ type data struct {
 
 type option func(*NorwayClient) error
 
+// WithUserAgent is a func option and allows to
+// customise User-Agent header used internally
+// by the NorwayClient.
 func WithUserAgent(ua string) option {
 	return func(nc *NorwayClient) error {
 		if ua == "" {
@@ -77,6 +80,7 @@ type NorwayClient struct {
 	Resolver   NameResolver
 }
 
+// NewNorwayClient knows how to construct a new client.
 func NewNorwayClient(resolver NameResolver, opts ...option) (*NorwayClient, error) {
 	c := NorwayClient{
 		BaseURL: baseURL,
@@ -95,6 +99,8 @@ func NewNorwayClient(resolver NameResolver, opts ...option) (*NorwayClient, erro
 	return &c, nil
 }
 
+// GetForecast takes place and country code and
+// returns weather summary and air temperature.
 func (c NorwayClient) GetForecast(place, country string) (Weather, error) {
 	p, err := c.Resolver.GetCoordinates(place, country)
 	if err != nil {

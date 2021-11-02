@@ -25,21 +25,26 @@ type wikipediaPlaces struct {
 
 type wikipediaOption func(wk *WikipediaClient) error
 
-func WikiWithUserAgent(ua string) wikipediaOption {
+// WithWikiUserAgent returns a func option for
+// setting up a custom User-Agent used in
+// http requests.
+func WithWikiUserAgent(ua string) wikipediaOption {
 	return func(wk *WikipediaClient) error {
 		wk.UA = ua
 		return nil
 	}
 }
 
-func WikiWithHTTPClient(hc *http.Client) wikipediaOption {
+// WithWikiHTTPClient returns a func option for
+// configuring a custom http client.
+func WithWikiHTTPClient(hc *http.Client) wikipediaOption {
 	return func(wk *WikipediaClient) error {
 		wk.HTTPClient = hc
 		return nil
 	}
 }
 
-// WikipediaClient implements NameResolver interface.
+// WikipediaClient implements Nameresolver interface.
 type WikipediaClient struct {
 	UA         string
 	UserName   string

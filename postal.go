@@ -37,14 +37,14 @@ type geoNameOption func(*GeoNamesClient) error
 func WithGeoNamesUserAgent(ua string) geoNameOption {
 	return func(gnc *GeoNamesClient) error {
 		if ua == "" {
-			return errors.New("user agent not provided")
+			return errors.New("nil user agent")
 		}
 		gnc.UA = ua
 		return nil
 	}
 }
 
-// GeoNameClient is a client used for communicating
+// GeoNamesClient is a client used for communicating
 // with geo name web services.
 type GeoNamesClient struct {
 	UA         string
@@ -53,7 +53,7 @@ type GeoNamesClient struct {
 	HTTPClient *http.Client
 }
 
-// NewGeoNameClient knows how to create a client for GeoNames Web services.
+// NewGeoNamesClient knows how to create a client for GeoNames Web services.
 func NewGeoNamesClient(username string, opts ...geoNameOption) (*GeoNamesClient, error) {
 	if username == "" {
 		return nil, errors.New("missing user name")
@@ -82,7 +82,7 @@ func (g GeoNamesClient) GetCoordinates(placeName, countryCode string) (Place, er
 	if err != nil {
 		return Place{}, err
 	}
-	req, err := g.prepareRequest(u)
+	req, err := prepareRequest(u)
 	if err != nil {
 		return Place{}, err
 	}
@@ -121,16 +121,6 @@ func (g GeoNamesClient) makeURL(placeName, countryCode string) (string, error) {
 	params.Add("username", g.UserName)
 	base.RawQuery = params.Encode()
 	return base.String(), nil
-}
-
-func (g GeoNamesClient) prepareRequest(u string) (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, u, nil)
-	if err != nil {
-		return nil, fmt.Errorf("preparing request %w", err)
-	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("User-Agent", userAgent)
-	return req, nil
 }
 
 // GetCoordinates knows how to get Lat and Long coordinates for
