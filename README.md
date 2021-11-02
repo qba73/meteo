@@ -34,7 +34,7 @@ $ export GEO_USERNAME=Jane123
 ```
 Use the ```meteo``` package in your application:
 ```go
-$ package main
+package main
 
 import (
 	"fmt"
