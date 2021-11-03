@@ -62,20 +62,43 @@ func TestGetForecast(t *testing.T) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/weatherapi/locationforecast/2.0/compact", func(rw http.ResponseWriter, r *http.Request) {
-		f, err := os.Open("testdata/response-compact.json")
+		testFile := "testdata/response-compact.json"
+		wantReqURL := "/weatherapi/locationforecast/2.0/compact?lat=53.86&lon=-9.30"
+		gotReqURL := r.RequestURI
+		if wantReqURL != gotReqURL {
+			t.Errorf("want %q for location compact forecast, got %q", wantReqURL, gotReqURL)
+		}
+
+		f, err := os.Open(testFile)
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer f.Close()
-		io.Copy(rw, f)
+
+		_, err = io.Copy(rw, f)
+		if err != nil {
+			t.Fatalf("copying data from file %s to test HTTP server: %v", testFile, err)
+		}
 	})
+
 	mux.HandleFunc("/wikipediaSearchJSON", func(rw http.ResponseWriter, r *http.Request) {
-		f, err := os.Open("testdata/response-geoname-wikipedia.json")
+		testFile := "testdata/response-geoname-wikipedia.json"
+		wantReqURL := "/wikipediaSearchJSON?maxRows=10&q=Castlebar&username=UserName"
+		gotReqURL := r.RequestURI
+		if wantReqURL != gotReqURL {
+			t.Errorf("want %q for wikipedia search JSON, got %q", wantReqURL, gotReqURL)
+		}
+
+		f, err := os.Open(testFile)
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer f.Close()
-		io.Copy(rw, f)
+
+		_, err = io.Copy(rw, f)
+		if err != nil {
+			t.Fatalf("copying data from file %s to test HTTP server: %v", testFile, err)
+		}
 	})
 	ts := httptest.NewServer(mux)
 	defer ts.Close()

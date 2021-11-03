@@ -43,8 +43,17 @@ func TestCreateNewGeoNamesClientWithUser(t *testing.T) {
 
 func TestGetCoordinatesSingleGeoNames(t *testing.T) {
 	t.Parallel()
+
+	testFile := "testdata/response-geoname-single.json"
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		f, err := os.Open("testdata/response-geoname-single.json")
+		wantReqURL := "/postalCodeSearchJSON?country=IE&placename=Castlebar&username=UserName"
+		gotReqURL := r.RequestURI
+		if wantReqURL != gotReqURL {
+			t.Errorf("want %q for wikipedia URL, got %q", wantReqURL, gotReqURL)
+		}
+
+		f, err := os.Open(testFile)
 		if err != nil {
 			t.Fatal(err)
 		}

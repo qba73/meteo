@@ -44,8 +44,16 @@ func TestNewWikipediaClientWithUserName(t *testing.T) {
 
 func TestGetCoordinatesSingleGeoName(t *testing.T) {
 	t.Parallel()
+
+	testFile := "testdata/response-geoname-wikipedia.json"
+
 	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		f, err := os.Open("testdata/response-geoname-wikipedia.json")
+		wantReqURL := "/wikipediaSearchJSON?maxRows=10&q=Castlebar&username=UserName"
+		gotReqURL := r.RequestURI
+		if wantReqURL != gotReqURL {
+			t.Errorf("want %q for wikipedia URL, got %q", wantReqURL, gotReqURL)
+		}
+		f, err := os.Open(testFile)
 		if err != nil {
 			t.Fatal(err)
 		}
