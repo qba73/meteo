@@ -14,7 +14,7 @@ import (
 func TestCreateNewMeteoClient(t *testing.T) {
 	t.Parallel()
 	var c *meteo.NorwayClient
-	resolver, err := meteo.NewWikipediaClient("User")
+	resolver, err := meteo.NewWikipediaClient("DummyUsername")
 	if err != nil {
 		t.Fatal(err)
 	}
