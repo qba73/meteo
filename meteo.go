@@ -34,7 +34,9 @@ type NameResolver interface {
 // RunCLI is a main function that runs the cli machinery.
 func RunCLI() {
 	uname := os.Getenv("GEO_USERNAME")
-	resolver, err := NewWikipediaClient(uname)
+	c, err := NewYrWeatherClient(
+		WithWikipediaGeoResolver(),
+	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
