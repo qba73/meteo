@@ -19,6 +19,10 @@ func TestCreateNewMeteoClient(t *testing.T) {
 		t.Fatal(err)
 	}
 	c, err = meteo.NewNorwayClient(resolver)
+	want := meteo.NorwayClient{
+		// maybe other fields here,
+		Resolver: resolver,
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
