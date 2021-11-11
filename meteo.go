@@ -45,7 +45,7 @@ func RunCLI() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	w, err := c.GetForecast("Castlebar", "IE")
+	forecast, err := c.GetForecast("Castlebar", "IE")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
