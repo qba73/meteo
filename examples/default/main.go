@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// Get weather status for city Castlebar in Ireland:
-	weather, err := meteo.GetWeather("Castlebar", "IE")
+	weather, err := meteo.GetWeather("Castlebar", "IE", "UserName")
 	if err != nil {
 		log.Println(err)
 	}
