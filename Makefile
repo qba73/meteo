@@ -29,12 +29,12 @@ check: ## Run static check analyzer
 	staticcheck ./...
 
 cover: ## Run unit tests and generate test coverage report
-	go test -v ./... -count=1 -covermode=count -coverprofile=coverage.out
+	go test -shuffle=on -race -v ./... -count=1 -cover -covermode=atomic -coverprofile=coverage.out
 	go tool cover -html coverage.out
 	staticcheck ./...
 
 test: ## Run unit tests locally
-	go test -v ./... -count=1
+	go test -shuffle=on -race -v ./...
 	staticcheck ./...
 
 # MODULES
