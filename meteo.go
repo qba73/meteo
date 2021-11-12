@@ -26,6 +26,7 @@ func RunCLI() {
 	resolver, err := geonames.NewClient(uname)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	c, err := NewYrClient(resolver)
 	if err != nil {
