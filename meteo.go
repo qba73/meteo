@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/qba73/meteo/geonames"
 )
 
 // Weather represents weather conditions
@@ -22,18 +20,12 @@ func (w Weather) String() string {
 
 // RunCLI is a main function that runs the cli machinery.
 func RunCLI() {
-	uname := os.Getenv("GEO_USERNAME")
-	resolver, err := geonames.NewClient(uname)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "Usage: %s LOCATION\n\nExample: %[1]s London,UK\n", os.Args[0])
 		os.Exit(1)
 	}
-	c, err := NewYrClient(resolver)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	w, err := c.GetForecast("Castlebar", "IE")
+	location := strings.Join(os.Args[1:], " ")
+	w, err := GetWeather(location)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

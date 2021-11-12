@@ -2,11 +2,12 @@ package meteo
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/qba73/meteo/geonames"
@@ -15,8 +16,6 @@ import (
 const (
 	libVersion = "0.0.1"
 	source     = "https://github.com/qba73/meteo"
-	userAgent  = "Meteo/" + libVersion + " " + source
-	baseURL    = "https://api.met.no"
 )
 
 type norwayForecast struct {
@@ -61,123 +60,96 @@ type data struct {
 	} `json:"next_1_hours"`
 }
 
-type NameResolver interface {
-	Resolve(place, country string) (float64, float64, error)
+type Location struct {
+	Lat, Long float64
 }
 
-type option func(*yrclient) error
-
-// WithUserAgent is a func option to
-// customise User-Agent header used internally
-// by the yrclient.
-func WithUserAgent(ua string) option {
-	return func(nc *yrclient) error {
-		if ua == "" {
-			return errors.New("user agent not provided")
-		}
-		nc.userAgent = ua
-		return nil
+func resolve(location string) (Location, error) {
+	uname := os.Getenv("GEO_USERNAME")
+	resolver, err := geonames.NewClient(uname)
+	if err != nil {
+		return Location{}, err
 	}
-}
-
-// WithHTTPClient sets a new HTTP client for YR Client.
-func WithHTTPClient(hc *http.Client) option {
-	return func(c *yrclient) error {
-		if hc == nil {
-			return errors.New("nil http client provided")
-		}
-		c.httpClient = hc
-		return nil
+	bits := strings.Split(location, ",")
+	lat, long, err := resolver.Resolve(bits[0], bits[1])
+	if err != nil {
+		return Location{}, err
 	}
+	return Location{
+		Lat:  lat,
+		Long: long,
+	}, nil
 }
 
-// WithBaseURL sets a new URL for the Yr client.
-// It errors if the provided base url is an empty string.
-func WithBaseURL(u string) option {
-	return func(c *yrclient) error {
-		if u == "" {
-			return errors.New("nil base URL")
-		}
-		c.baseURL = u
-		return nil
-	}
-}
-
-// yrclient represents a weather client
+// YRClient represents a weather client
 // for the Norwegian Meteorological Institute.
-type yrclient struct {
-	resolver   NameResolver
-	userAgent  string
-	baseURL    string
-	httpClient *http.Client
+type YRClient struct {
+	UserAgent  string
+	BaseURL    string
+	HTTPClient *http.Client
+	Resolve    func(string) (Location, error)
 }
 
 // NewNorwayClient knows how to construct a new client.
-func NewYrClient(resolver NameResolver, opts ...option) (*yrclient, error) {
-	c := yrclient{
-		userAgent: userAgent,
-		baseURL:   baseURL,
-		httpClient: &http.Client{
+func NewYRClient() *YRClient {
+	return &YRClient{
+		UserAgent: "Meteo/" + libVersion + " " + source,
+		BaseURL:   "https://api.met.no",
+		HTTPClient: &http.Client{
 			Timeout: time.Second * 5,
 		},
-		resolver: resolver,
+		Resolve: resolve,
 	}
-	for _, opt := range opts {
-		if err := opt(&c); err != nil {
-			return nil, err
-		}
-	}
-	return &c, nil
 }
 
 // GetForecast takes place and country code and
 // returns weather summary and air temperature.
-func (c yrclient) GetForecast(place, country string) (string, error) {
-	lat, lng, err := c.resolver.Resolve(place, country)
+func (c YRClient) GetForecast(place string) (Weather, error) {
+	location, err := c.Resolve(place)
 	if err != nil {
-		return "", err
+		return Weather{}, err
 	}
-	return c.getForecast(lat, lng)
+	return c.getForecast(location)
 }
 
-func (c yrclient) getForecast(lat, lon float64) (string, error) {
-	u, err := c.makeURL(lat, lon)
+func (c YRClient) getForecast(location Location) (Weather, error) {
+	u, err := c.makeURL(location.Lat, location.Long)
 	if err != nil {
-		return "", err
+		return Weather{}, err
 	}
-	req, err := prepareRequest(u)
+	req, err := c.prepareRequest(u)
 	if err != nil {
-		return "", err
+		return Weather{}, err
 	}
-	res, err := c.httpClient.Do(req)
+	res, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return "", err
+		return Weather{}, err
 	}
 	defer res.Body.Close()
 
 	data, err := io.ReadAll(res.Body)
 	if err != nil {
-		return "", fmt.Errorf("reading response body, %v", err)
+		return Weather{}, fmt.Errorf("reading response body, %v", err)
 	}
 
 	var nf norwayForecast
 	if err := json.Unmarshal(data, &nf); err != nil {
-		return "", fmt.Errorf("unmarshalling data, %v", err)
+		return Weather{}, fmt.Errorf("unmarshalling data, %v", err)
 	}
 
 	if len(nf.Properties.Timeseries) < 1 {
-		return "", fmt.Errorf("invalid response %+v", nf)
+		return Weather{}, fmt.Errorf("invalid response %+v", nf)
 	}
 
 	w := Weather{
 		Summary: nf.Properties.Timeseries[0].Data.Next1Hours.Summary.SymbolCode,
 		Temp:    nf.Properties.Timeseries[0].Data.Instant.Details.AirTemperature,
 	}
-	return fmt.Sprint(w), nil
+	return w, nil
 }
 
-func (c yrclient) makeURL(lat, lon float64) (string, error) {
-	base, err := url.Parse(c.baseURL + "/weatherapi/locationforecast/2.0/compact")
+func (c YRClient) makeURL(lat, lon float64) (string, error) {
+	base, err := url.Parse(c.BaseURL + "/weatherapi/locationforecast/2.0/compact")
 	if err != nil {
 		return "", err
 	}
@@ -188,30 +160,19 @@ func (c yrclient) makeURL(lat, lon float64) (string, error) {
 	return base.String(), nil
 }
 
-func prepareRequest(u string) (*http.Request, error) {
+func (c YRClient) prepareRequest(u string) (*http.Request, error) {
 	req, err := http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("User-Agent", userAgent)
+	req.Header.Add("User-Agent", c.UserAgent)
 	return req, nil
 }
 
 // GetWeather returns current weather for given
 // place and country using default client for the Norwegian
 // meteorological Institute.
-func GetWeather(place, country, username string) (string, error) {
-	resolver, err := geonames.NewClient(
-		username,
-		geonames.WithUserAgent(userAgent),
-	)
-	if err != nil {
-		return "", err
-	}
-	c, err := NewYrClient(resolver, WithUserAgent(userAgent))
-	if err != nil {
-		return "", err
-	}
-	return c.GetForecast(place, country)
+func GetWeather(location string) (Weather, error) {
+	return NewYRClient().GetForecast(location)
 }
