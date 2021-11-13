@@ -94,7 +94,7 @@ func NewClient(userName string, opts ...Option) (*client, error) {
 		UserName:  userName,
 		BaseURL:   baseURL,
 		HTTPClient: &http.Client{
-			Timeout: time.Second * 5,
+			Timeout: time.Second * 10,
 		},
 	}
 	for _, opt := range opts {
