@@ -10,49 +10,43 @@
 
 Meteo is a Go client library for the weather and meteorological forecast from [Yr](https://www.yr.no/en).
 
-Disclaimer:
-
-Weather forecast from Yr, delivered by the Norwegian Meteorological Institute and NRK.
+> Weather forecast from Yr, delivered by the Norwegian Meteorological Institute and NRK.
 
 # Usage
 
-## Preconditions
-
-You must register your user agent string in the [YR.NO service](https://developer.yr.no/doc/TermsOfService/) and your user name in the [GeoNames service](https://www.geonames.org/login) to use the package.
+You must register your user agent string in the [YR.NO service](https://developer.yr.no/doc/TermsOfService/) and your user name at the [GeoNames.org](https://www.geonames.org/login).
 
 
-## Installation
-```
-$ go get git@github.com:qba73/meteo.git
-```
-
-## Default
-
-Export ```GEO_USERNAME``` env var that you registered with GeoNames.org.
-
-Example:
-```
-$ export GEO_USERNAME=Jane123
-```
-Use the ```meteo``` package in your application:
 ```go
 package main
 
 import (
 	"fmt"
-	"log"
+
 	"github.com/qba73/meteo"
 )
 
 func main() {
-	// Get weather status for Castlebar in Ireland:
-	weather, err := meteo.GetWeather("Castlebar", "IE")
+	// Export GEO_USERNAME Env Var - username you registered at geonames.org
+
+	// Get current weather for given location.
+	weather, err := meteo.GetWeather("Vilnius,LT")
 	if err != nil {
-		log.Println(err)
+		fmt.Println(err)
 	}
-	// Print out weather string.
-	// Example: Lightrain 8.3°C
+
 	fmt.Println(weather)
+	// Cloudy 4.2°C
+
+	fmt.Println(weather.Summary)
+	// cloudy
+
+	fmt.Println(weather.Temp)
+	// 4.2
 }
 ```
 
+# Installation
+```
+$ go get github.com/qba73/meteo
+```
