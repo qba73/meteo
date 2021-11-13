@@ -46,7 +46,7 @@ func main() {
 }
 ```
 
-The example below shows a basic example of how the meteo package can fetch weather statuses concurrently.
+The code sample below shows a basic example of how the meteo package can fetch weather statuses concurrently.
 
 ```go
 package main
