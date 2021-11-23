@@ -1,4 +1,4 @@
-.PHONY: help check cover test tidy
+.PHONY: help check cover test tidy vet
 
 ROOT := $(PWD)
 GO_HTML_COV := ./coverage.html
@@ -24,6 +24,10 @@ default: help
 
 help:
 	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
+
+vet: ## Run go vet and shadow
+	go vet ./...
+	shadow ./...
 
 check: ## Run static check analyzer
 	staticcheck ./...
