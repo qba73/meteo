@@ -1,4 +1,4 @@
-.PHONY: help check cover test tidy vet
+.PHONY: help check cover test tidy vet build
 
 ROOT := $(PWD)
 GO_HTML_COV := ./coverage.html
@@ -37,7 +37,7 @@ cover: ## Run unit tests and generate test coverage report
 	go tool cover -html coverage.out
 	staticcheck ./...
 
-test: ## Run unit tests locally
+test: vet ## Run unit tests locally
 	go test -shuffle=on -race -v ./...
 	staticcheck ./...
 
