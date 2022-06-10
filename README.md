@@ -112,5 +112,5 @@ Run the binary:
 
 # Installation
 ```
-$ go get github.com/qba73/meteo
+$ go install github.com/qba73/meteo/cmd/meteo@latest
 ```

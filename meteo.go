@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // Weather represents weather conditions
@@ -15,7 +18,7 @@ type Weather struct {
 
 // String implements stringer interface.
 func (w Weather) String() string {
-	return fmt.Sprintf("%s %.1f°C", strings.Title(w.Summary), w.Temp)
+	return fmt.Sprintf("%s %.1f°C", cases.Title(language.English).String(w.Summary), w.Temp)
 }
 
 // RunCLI is a main function that runs the cli machinery.
