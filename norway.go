@@ -60,6 +60,7 @@ type data struct {
 	} `json:"next_1_hours"`
 }
 
+// Location represents lat and long coordinates.
 type Location struct {
 	Lat, Long float64
 }

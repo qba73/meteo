@@ -14,6 +14,8 @@
 *.out
 vendor/
 
+# IDE
+.vscode/
 
 # Mac stuff
 .DS_Store
