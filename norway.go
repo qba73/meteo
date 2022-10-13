@@ -10,64 +10,87 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qba73/meteo/geonames"
+	"github.com/qba73/geonames"
 )
 
 const (
 	libVersion = "0.0.1"
-	source     = "https://github.com/qba73/meteo"
 )
 
-type norwayForecast struct {
-	Type       string     `json:"type"`
-	Geometry   geometry   `json:"geometry"`
-	Properties properties `json:"properties"`
+type forecastResponseCompact struct {
+	Type     string `json:"type"`
+	Geometry struct {
+		Type        string    `json:"type"`
+		Coordinates []float64 `json:"coordinates"`
+	} `json:"geometry"`
+	Properties struct {
+		Meta struct {
+			UpdatedAt time.Time `json:"updated_at"`
+			Units     struct {
+				AirPressureAtSeaLevel string `json:"air_pressure_at_sea_level"`
+				AirTemperature        string `json:"air_temperature"`
+				CloudAreaFraction     string `json:"cloud_area_fraction"`
+				PrecipitationAmount   string `json:"precipitation_amount"`
+				RelativeHumidity      string `json:"relative_humidity"`
+				WindFromDirection     string `json:"wind_from_direction"`
+				WindSpeed             string `json:"wind_speed"`
+			} `json:"units"`
+		} `json:"meta"`
+		Timeseries []struct {
+			Time time.Time `json:"time"`
+			Data struct {
+				Instant struct {
+					Details struct {
+						AirPressureAtSeaLevel float64 `json:"air_pressure_at_sea_level"`
+						AirTemperature        float64 `json:"air_temperature"`
+						CloudAreaFraction     float64 `json:"cloud_area_fraction"`
+						RelativeHumidity      float64 `json:"relative_humidity"`
+						WindFromDirection     float64 `json:"wind_from_direction"`
+						WindSpeed             float64 `json:"wind_speed"`
+					} `json:"details"`
+				} `json:"instant"`
+				Next12Hours struct {
+					Summary struct {
+						SymbolCode string `json:"symbol_code"`
+					} `json:"summary"`
+				} `json:"next_12_hours"`
+				Next1Hours struct {
+					Summary struct {
+						SymbolCode string `json:"symbol_code"`
+					} `json:"summary"`
+					Details struct {
+						PrecipitationAmount float64 `json:"precipitation_amount"`
+					} `json:"details"`
+				} `json:"next_1_hours"`
+				Next6Hours struct {
+					Summary struct {
+						SymbolCode string `json:"symbol_code"`
+					} `json:"summary"`
+					Details struct {
+						PrecipitationAmount float64 `json:"precipitation_amount"`
+					} `json:"details"`
+				} `json:"next_6_hours"`
+			} `json:"data"`
+		} `json:"timeseries"`
+	} `json:"properties"`
 }
 
-type geometry struct {
-	Type        string     `json:"type"`
-	Coordinates []float64  `json:"coordinates"`
-	Properties  properties `json:"properties"`
+type CurrentWeather struct {
+	UpdatedAt          time.Time
+	Time               time.Time
+	PressureAtSeaLevel float64
+	Temperature        float64
+	Precipitation      float64
 }
 
-type properties struct {
-	Meta       meta       `json:"meta"`
-	Timeseries timeseries `json:"timeseries"`
-}
-
-type meta struct {
-	UpdatedAt string            `json:"updated_at"`
-	Units     map[string]string `json:"units"`
-}
-
-type timeseries []forecastEntry
-
-type forecastEntry struct {
-	Time string `json:"time"`
-	Data data   `json:"data"`
-}
-
-type data struct {
-	Instant struct {
-		Details struct {
-			AirTemperature float64 `json:"air_temperature"`
-		}
-	}
-	Next1Hours struct {
-		Summary struct {
-			SymbolCode string `json:"symbol_code"`
-		}
-	} `json:"next_1_hours"`
-}
-
-// Location represents lat and long coordinates.
+// Location represents geo coordinates.
 type Location struct {
-	Lat, Long float64
+	Lat  float64
+	Long float64
 }
 
 func resolve(location string) (Location, error) {
-	uname := os.Getenv("GEO_USERNAME")
-	resolver, err := geonames.NewClient(uname)
+	resolver, err := geonames.NewClient(os.Getenv("GEONAMES_USER"))
 	if err != nil {
 		return Location{}, err
 	}
@@ -75,13 +98,16 @@ func resolve(location string) (Location, error) {
 	if err != nil {
 		return Location{}, err
 	}
-	lat, long, err := resolver.Resolve(place, country)
+	names, err := resolver.GetPlace(place, country, 1)
 	if err != nil {
 		return Location{}, err
 	}
+	if len(names) < 1 {
+		return Location{}, fmt.Errorf("unable to resolve location: place %s, country %s", place, country)
+	}
 	return Location{
-		Lat:  lat,
-		Long: long,
+		Lat:  names[0].Position.Lat,
+		Long: names[0].Position.Long,
 	}, nil
 }
 
@@ -105,7 +131,7 @@ type YRclient struct {
 // NewYRClient knows how to construct a new default client.
 func NewYRClient() *YRclient {
 	c := YRclient{
-		UserAgent: "Meteo/" + libVersion + " " + source,
+		UserAgent: fmt.Sprintf("Meteo/%s https://github.com/qba73/meteo", libVersion),
 		BaseURL:   "https://api.met.no",
 		HTTPClient: &http.Client{
 			Timeout: time.Second * 5,
@@ -115,9 +141,11 @@ func NewYRClient() *YRclient {
 	return &c
 }
 
-// GetForecast takes place and returns weather
-// summary and air temperature.
-func (c YRclient) GetForecast(place string) (Weather, error) {
+// GetWeather returns current weather for given place.
+//
+// Place string should have format: "<place-name>,<country-code>",
+// for example: "London,UK", "Dublin,IE", "Paris,FR", "Warsaw,PL".
+func (c YRclient) GetWeather(place string) (Weather, error) {
 	location, err := c.Resolve(place)
 	if err != nil {
 		return Weather{}, err
@@ -125,29 +153,27 @@ func (c YRclient) GetForecast(place string) (Weather, error) {
 	return c.getForecast(location)
 }
 
+// GetWeatherForCoordinates returns current weather for a place
+// with given coordinates (lat, long)
+func (c YRclient) GetWeatherForCoordinates(lat, long float64) (Weather, error) {
+	l := Location{
+		Lat:  lat,
+		Long: long,
+	}
+	return c.getForecast(l)
+
+}
+
 func (c YRclient) getForecast(location Location) (Weather, error) {
 	u, err := c.makeURL(location.Lat, location.Long)
 	if err != nil {
 		return Weather{}, err
 	}
-	req, err := c.prepareRequest(u)
-	if err != nil {
-		return Weather{}, err
-	}
-	res, err := c.HTTPClient.Do(req)
-	if err != nil {
-		return Weather{}, err
-	}
-	defer res.Body.Close()
 
-	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		return Weather{}, fmt.Errorf("reading response body, %v", err)
-	}
-
-	var nf norwayForecast
-	if err := json.Unmarshal(data, &nf); err != nil {
-		return Weather{}, fmt.Errorf("unmarshalling data, %v", err)
+	//var nf norwayForecast
+	var nf forecastResponseCompact
+	if err := c.get(u, &nf); err != nil {
+		return Weather{}, err
 	}
 
 	if len(nf.Properties.Timeseries) < 1 {
@@ -159,6 +185,35 @@ func (c YRclient) getForecast(location Location) (Weather, error) {
 		Temp:    nf.Properties.Timeseries[0].Data.Instant.Details.AirTemperature,
 	}
 	return w, nil
+}
+
+func (c YRclient) get(url string, data interface{}) error {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", c.UserAgent)
+
+	res, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("sending request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("got response code: %v", res.StatusCode)
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return fmt.Errorf("reading response body: %w", err)
+	}
+
+	if err := json.Unmarshal(body, data); err != nil {
+		return fmt.Errorf("unmarshaling response body: %w", err)
+	}
+	return nil
 }
 
 func (c YRclient) makeURL(lat, lon float64) (string, error) {
@@ -173,18 +228,8 @@ func (c YRclient) makeURL(lat, lon float64) (string, error) {
 	return base.String(), nil
 }
 
-func (c YRclient) prepareRequest(u string) (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, u, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("User-Agent", c.UserAgent)
-	return req, nil
-}
-
 // GetWeather returns current weather for given
 // place and country using default client.
 func GetWeather(location string) (Weather, error) {
-	return NewYRClient().GetForecast(location)
+	return NewYRClient().GetWeather(location)
 }

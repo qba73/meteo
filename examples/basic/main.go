@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	// Export GEO_USERNAME Env Var - username you registered at geonames.org
+	// Export GEONAMES_USER Env Var - username you registered at geonames.org
 
 	// Get current weather for given location.
 	weather, err := meteo.GetWeather("Vilnius,LT")

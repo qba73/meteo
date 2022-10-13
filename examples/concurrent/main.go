@@ -13,7 +13,6 @@
 // 0.63s Location: London,UK, Weather: Cloudy 11.5°C
 // 2.24s Location: Vienna,AT, Weather: Cloudy 4.6°C
 // 2.24s elapsed
-//
 package main
 
 import (

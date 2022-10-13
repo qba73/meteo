@@ -8,7 +8,7 @@ import (
 	"github.com/qba73/meteo"
 )
 
-func TestWeatherStringFormat(t *testing.T) {
+func TestClientFormatsWeatherInfoOnValidInput(t *testing.T) {
 	t.Parallel()
 	w := meteo.Weather{
 		Summary: "sunny",
