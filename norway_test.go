@@ -1,6 +1,7 @@
 package meteo_test
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -93,7 +94,7 @@ func TestClientRequestsWeatherWithValidPathAndParams(t *testing.T) {
 			Long: -9.30,
 		}, nil
 	}
-	_, err := client.GetWeather("Dublin,IE")
+	_, err := client.GetWeather(context.Background(), "Dublin,IE")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +120,7 @@ func TestClientReadsCurrentWeatherOnValidInput(t *testing.T) {
 			Long: -9.30,
 		}, nil
 	}
-	got, err := client.GetWeather("Castlebar,IE")
+	got, err := client.GetWeather(context.Background(), "Castlebar,IE")
 	if err != nil {
 		t.Errorf("error getting forecast data, %v", err)
 	}

@@ -1,11 +1,11 @@
 package meteo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -83,6 +83,23 @@ type CurrentWeather struct {
 	Precipitation      float64
 }
 
+type Forecast struct {
+	UpdatedAt time.Time
+	Hourly    []HourlyForecast
+}
+
+type HourlyForecast struct {
+	Time                time.Time
+	AirPressure         float64 // in hPa
+	AirTemperature      float64 // in Celsius
+	CloudAreaFraction   float64 // in "%""
+	RelativeHumidity    float64 // in "%"
+	WindFromDirection   float64 // in "degrees"
+	WindSpeed           float64 // in "m/s"
+	PrecipitationAmount float64 // in "mm"
+	Summary             string
+}
+
 // Location represents geo coordinates.
 type Location struct {
 	Lat  float64
@@ -119,24 +136,42 @@ func toPlaceAndCountry(location string) (string, string, error) {
 	return bits[0], bits[1], nil
 }
 
+var summary map[string]string = map[string]string{
+	"rain":                   "rain",
+	"heavyrain":              "heavy rain",
+	"lightrain":              "light rain",
+	"cloudy":                 "cloudy",
+	"heavyrainshowers_night": "heavy rain showers",
+	"heavyrainshowers_day":   "heavy rain showers",
+	"rainshowers_day":        "rain showers",
+	"rainshowers_night":      "rain showers",
+	"lightrainshowers_day":   "light showers",
+	"lightrainshowers_night": "light showers",
+	"partlycloudy_day":       "partly cloudy",
+	"partlycloudy_night":     "partly cloudy",
+	"fair_day":               "fair",
+	"fair_night":             "fair",
+	"fog":                    "fog",
+	"clearsky_night":         "clear sky",
+	"clearsky_day":           "clear sky",
+}
+
 // YRclient represents a weather client
 // for the Norwegian Meteorological Institute.
-type YRclient struct {
-	UserAgent  string
+type YRClient struct {
+	userAgent  string
 	BaseURL    string
 	HTTPClient *http.Client
 	Resolve    func(string) (Location, error)
 }
 
 // NewYRClient knows how to construct a new default client.
-func NewYRClient() *YRclient {
-	c := YRclient{
-		UserAgent: fmt.Sprintf("Meteo/%s https://github.com/qba73/meteo", libVersion),
-		BaseURL:   "https://api.met.no",
-		HTTPClient: &http.Client{
-			Timeout: time.Second * 5,
-		},
-		Resolve: resolve,
+func NewYRClient() *YRClient {
+	c := YRClient{
+		userAgent:  fmt.Sprintf("Meteo/%s https://github.com/qba73/meteo", libVersion),
+		BaseURL:    "https://api.met.no",
+		HTTPClient: http.DefaultClient,
+		Resolve:    resolve,
 	}
 	return &c
 }
@@ -145,34 +180,30 @@ func NewYRClient() *YRclient {
 //
 // Place string should have format: "<place-name>,<country-code>",
 // for example: "London,UK", "Dublin,IE", "Paris,FR", "Warsaw,PL".
-func (c YRclient) GetWeather(place string) (Weather, error) {
+func (c YRClient) GetWeather(ctx context.Context, place string) (Weather, error) {
 	location, err := c.Resolve(place)
 	if err != nil {
 		return Weather{}, err
 	}
-	return c.getForecast(location)
+	return c.weather(ctx, location)
 }
 
 // GetWeatherForCoordinates returns current weather for a place
 // with given coordinates (lat, long)
-func (c YRclient) GetWeatherForCoordinates(lat, long float64) (Weather, error) {
+func (c YRClient) GetWeatherForCoordinates(ctx context.Context, lat, long float64) (Weather, error) {
 	l := Location{
 		Lat:  lat,
 		Long: long,
 	}
-	return c.getForecast(l)
+	return c.weather(ctx, l)
 
 }
 
-func (c YRclient) getForecast(location Location) (Weather, error) {
-	u, err := c.makeURL(location.Lat, location.Long)
-	if err != nil {
-		return Weather{}, err
-	}
+func (c YRClient) weather(ctx context.Context, location Location) (Weather, error) {
+	u := fmt.Sprintf("%s/weatherapi/locationforecast/2.0/compact?lat=%.2f&lon=%.2f", c.BaseURL, location.Lat, location.Long)
 
-	//var nf norwayForecast
 	var nf forecastResponseCompact
-	if err := c.get(u, &nf); err != nil {
+	if err := c.get(ctx, u, &nf); err != nil {
 		return Weather{}, err
 	}
 
@@ -187,13 +218,31 @@ func (c YRclient) getForecast(location Location) (Weather, error) {
 	return w, nil
 }
 
-func (c YRclient) get(url string, data interface{}) error {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+func (c YRClient) forecast(ctx context.Context, location Location) (Forecast, error) {
+	u := fmt.Sprintf("%s/weatherapi/locationforecast/2.0/compact?lat=%.2f&lon=%.2f", c.BaseURL, location.Lat, location.Long)
+
+	var nf forecastResponseCompact
+	if err := c.get(ctx, u, &nf); err != nil {
+		return Forecast{}, err
+	}
+
+	if len(nf.Properties.Timeseries) < 1 {
+		return Forecast{}, fmt.Errorf("invalid response %+v", nf)
+	}
+
+	w := Forecast{
+		UpdatedAt: nf.Properties.Meta.UpdatedAt,
+	}
+	return w, nil
+}
+
+func (c YRClient) get(ctx context.Context, url string, data interface{}) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", c.UserAgent)
+	req.Header.Set("User-Agent", c.userAgent)
 
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -216,20 +265,11 @@ func (c YRclient) get(url string, data interface{}) error {
 	return nil
 }
 
-func (c YRclient) makeURL(lat, lon float64) (string, error) {
-	base, err := url.Parse(c.BaseURL + "/weatherapi/locationforecast/2.0/compact")
-	if err != nil {
-		return "", err
-	}
-	params := url.Values{}
-	params.Add("lat", fmt.Sprintf("%.2f", lat))
-	params.Add("lon", fmt.Sprintf("%.2f", lon))
-	base.RawQuery = params.Encode()
-	return base.String(), nil
-}
-
 // GetWeather returns current weather for given
 // place and country using default client.
 func GetWeather(location string) (Weather, error) {
-	return NewYRClient().GetWeather(location)
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	return NewYRClient().GetWeather(ctx, location)
 }
