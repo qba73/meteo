@@ -15,10 +15,10 @@ import (
 	"github.com/qba73/meteo"
 )
 
-func newTestServerWithPathValidator(testFile string, wantURI string, t *testing.T) *httptest.Server {
+func newTestTLSServerWithPathValidator(testFile string, wantURI string, t *testing.T) *httptest.Server {
 	t.Helper()
 
-	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		gotReqURI := r.RequestURI
 		verifyURIs(wantURI, gotReqURI, t)
 
@@ -33,6 +33,9 @@ func newTestServerWithPathValidator(testFile string, wantURI string, t *testing.
 			t.Fatalf("copying data from file %s to test HTTP server: %v", testFile, err)
 		}
 	}))
+	t.Cleanup(func() {
+		ts.Close()
+	})
 	return ts
 }
 
@@ -74,7 +77,7 @@ func TestClientRequestsWeatherWithValidPathAndParams(t *testing.T) {
 	wantURI := "/weatherapi/locationforecast/2.0/compact?lat=53.86&lon=-9.30"
 	testFile := "testdata/response-compact.json"
 
-	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		gotReqURI := r.RequestURI
 		verifyURIs(wantURI, gotReqURI, t)
 
@@ -92,11 +95,13 @@ func TestClientRequestsWeatherWithValidPathAndParams(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client, err := meteo.NewClient()
+	client, err := meteo.NewClient(
+		meteo.WithBaseURL(ts.URL),
+		meteo.WithHTTPClient(ts.Client()),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	client.BaseURL = ts.URL
 	client.Resolve = func(ctx context.Context, location string) (meteo.Location, error) {
 		return meteo.Location{
 			Lat:  53.86,
@@ -118,14 +123,15 @@ func TestClientReadsCurrentWeatherOnValidInput(t *testing.T) {
 
 	testFile := "testdata/response-compact.json"
 	wantURI := "/weatherapi/locationforecast/2.0/compact?lat=53.86&lon=-9.30"
-	ts := newTestServerWithPathValidator(testFile, wantURI, t)
-	defer ts.Close()
+	ts := newTestTLSServerWithPathValidator(testFile, wantURI, t)
 
-	client, err := meteo.NewClient()
+	client, err := meteo.NewClient(
+		meteo.WithBaseURL(ts.URL),
+		meteo.WithHTTPClient(ts.Client()),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	client.BaseURL = ts.URL
 	client.Resolve = func(ctx context.Context, location string) (meteo.Location, error) {
 		return meteo.Location{
 			Lat:  53.86,
