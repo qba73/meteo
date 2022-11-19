@@ -16,6 +16,8 @@ import (
 )
 
 func newTestServerWithPathValidator(testFile string, wantURI string, t *testing.T) *httptest.Server {
+	t.Helper()
+
 	ts := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		gotReqURI := r.RequestURI
 		verifyURIs(wantURI, gotReqURI, t)
@@ -36,6 +38,8 @@ func newTestServerWithPathValidator(testFile string, wantURI string, t *testing.
 
 // verifyURIs is a test helper function that verifies if provided URIs are equal.
 func verifyURIs(wanturi, goturi string, t *testing.T) {
+	t.Helper()
+
 	wantU, err := url.Parse(wanturi)
 	if err != nil {
 		t.Fatalf("error parsing URL %q, %v", wanturi, err)
@@ -88,7 +92,10 @@ func TestClientRequestsWeatherWithValidPathAndParams(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := meteo.NewClient()
+	client, err := meteo.NewClient()
+	if err != nil {
+		t.Fatal(err)
+	}
 	client.BaseURL = ts.URL
 	client.Resolve = func(ctx context.Context, location string) (meteo.Location, error) {
 		return meteo.Location{
@@ -96,7 +103,7 @@ func TestClientRequestsWeatherWithValidPathAndParams(t *testing.T) {
 			Long: -9.30,
 		}, nil
 	}
-	_, err := client.GetWeather(context.Background(), "Dublin,IE")
+	_, err = client.GetWeather(context.Background(), "Dublin,IE")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +121,10 @@ func TestClientReadsCurrentWeatherOnValidInput(t *testing.T) {
 	ts := newTestServerWithPathValidator(testFile, wantURI, t)
 	defer ts.Close()
 
-	client := meteo.NewClient()
+	client, err := meteo.NewClient()
+	if err != nil {
+		t.Fatal(err)
+	}
 	client.BaseURL = ts.URL
 	client.Resolve = func(ctx context.Context, location string) (meteo.Location, error) {
 		return meteo.Location{
@@ -137,6 +147,7 @@ func TestClientReadsCurrentWeatherOnValidInput(t *testing.T) {
 
 func TestClientFormatsWeatherInfoOnValidInput(t *testing.T) {
 	t.Parallel()
+
 	w := meteo.Weather{
 		Summary: "sunny",
 		Temp:    -3.12,

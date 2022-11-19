@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -110,7 +111,11 @@ type Location struct {
 }
 
 func resolve(ctx context.Context, location string) (Location, error) {
-	resolver, err := geonames.NewClient(os.Getenv("GEONAMES_USER"))
+	geonamesUser := os.Getenv("GEONAMES_USER")
+	if geonamesUser == "" {
+		log.Fatal("Please set environmental variable GEONAMES_USER.")
+	}
+	resolver, err := geonames.NewClient(geonamesUser)
 	if err != nil {
 		return Location{}, err
 	}
@@ -208,14 +213,19 @@ type Client struct {
 }
 
 // NewClient knows how to construct a new default client.
-func NewClient() *Client {
+func NewClient(opts ...option) (*Client, error) {
 	c := Client{
 		UserAgent:  "Meteo/" + libVersion + "https://github.com/qba73/meteo",
 		BaseURL:    "https://api.met.no",
 		HTTPClient: http.DefaultClient,
 		Resolve:    resolve,
 	}
-	return &c
+	for _, opt := range opts {
+		if err := opt(&c); err != nil {
+			return nil, err
+		}
+	}
+	return &c, nil
 }
 
 // GetWeather returns current weather for given place.
@@ -319,26 +329,36 @@ func (w Weather) String() string {
 	return fmt.Sprintf("%s %.1f°C", cases.Title(language.English).String(w.Summary), w.Temp)
 }
 
-// RunCLI is a main function that runs the cli machinery.
-func RunCLI() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s LOCATION\n\nExmple: %[1]s London,UK\n", os.Args[0])
-		os.Exit(1)
-	}
-	location := strings.Join(os.Args[1:], " ")
-	w, err := GetWeather(location)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	fmt.Println(w)
-}
-
 // GetWeather returns current weather for given
 // place and country using default client.
 func GetWeather(location string) (Weather, error) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	return NewClient().GetWeather(ctx, location)
+
+	c, err := NewClient()
+	if err != nil {
+		return Weather{}, err
+	}
+	return c.GetWeather(ctx, location)
+}
+
+// RunCLI is a main function that runs the cli machinery.
+func RunWeatherCLI() int {
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "Usage: %s LOCATION\n\nExmple: %[1]s London,UK\n", os.Args[0])
+		return 1
+	}
+	location := strings.Join(os.Args[1:], " ")
+	w, err := GetWeather(location)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	fmt.Fprintln(os.Stdout, w)
+	return 0
+}
+
+func RunForecastCLI() int {
+	return 0
 }
