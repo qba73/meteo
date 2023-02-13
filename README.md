@@ -1,7 +1,5 @@
 ![Go](https://github.com/qba73/meteo/workflows/Go/badge.svg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/qba73/meteo)](https://goreportcard.com/report/github.com/qba73/meteo)
-[![Maintainability](https://api.codeclimate.com/v1/badges/4afc34a390da95ed9327/maintainability)](https://codeclimate.com/github/qba73/meteo/maintainability)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/4afc34a390da95ed9327/test_coverage)](https://codeclimate.com/github/qba73/meteo/test_coverage)
 ![GitHub](https://img.shields.io/github/license/qba73/meteo)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/qba73/meteo)
 
