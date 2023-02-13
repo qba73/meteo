@@ -3,7 +3,7 @@
 ROOT := $(PWD)
 GO_HTML_COV := ./coverage.html
 GO_TEST_OUTFILE := ./c.out
-GO_DOCKER_IMAGE := golang:1.17
+GO_DOCKER_IMAGE := golang:1.19
 GO_DOCKER_CONTAINER := meteo-container
 CC_TEST_REPORTER_ID := ${CC_TEST_REPORTER_ID}
 CC_PREFIX := github.com/qba73/meteo
