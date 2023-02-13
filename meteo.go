@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ import (
 
 const (
 	libVersion = "0.0.1"
+	userAgent  = "Meteo/" + libVersion + "https://github.com/qba73/meteo"
 )
 
 type forecastResponseCompact struct {
@@ -144,24 +146,38 @@ func toPlaceAndCountry(location string) (string, string, error) {
 	return bits[0], bits[1], nil
 }
 
-var summary map[string]string = map[string]string{
-	"rain":                   "rain",
-	"heavyrain":              "heavy rain",
-	"lightrain":              "light rain",
-	"cloudy":                 "cloudy",
-	"heavyrainshowers_night": "heavy rain showers",
-	"heavyrainshowers_day":   "heavy rain showers",
-	"rainshowers_day":        "rain showers",
-	"rainshowers_night":      "rain showers",
-	"lightrainshowers_day":   "light showers",
-	"lightrainshowers_night": "light showers",
-	"partlycloudy_day":       "partly cloudy",
-	"partlycloudy_night":     "partly cloudy",
-	"fair_day":               "fair",
-	"fair_night":             "fair",
-	"fog":                    "fog",
-	"clearsky_night":         "clear sky",
-	"clearsky_day":           "clear sky",
+func getSymbolDescription(symbol string) string {
+	symbols := map[string]string{
+		"rain":                   "rain",
+		"heavyrain":              "heavy rain",
+		"lightrain":              "light rain",
+		"cloudy":                 "cloudy",
+		"heavyrainshowers_night": "heavy rain showers",
+		"heavyrainshowers_day":   "heavy rain showers",
+		"rainshowers_day":        "rain showers",
+		"rainshowers_night":      "rain showers",
+		"lightrainshowers_day":   "light showers",
+		"lightrainshowers_night": "light showers",
+		"partlycloudy_day":       "partly cloudy",
+		"partlycloudy_night":     "partly cloudy",
+		"fair_day":               "fair",
+		"fair_night":             "fair",
+		"fog":                    "fog",
+		"clearsky_night":         "clear sky",
+		"clearsky_day":           "clear sky",
+	}
+	desc, ok := symbols[symbol]
+	if !ok {
+		return ""
+	}
+	return desc
+}
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
 }
 
 type option func(*Client) error
@@ -171,7 +187,7 @@ func WithUserAgent(ua string) option {
 		if ua == "" {
 			return errors.New("nil user agent")
 		}
-		c.UserAgent = ua
+		c.userAgent = ua
 		return nil
 	}
 }
@@ -206,17 +222,18 @@ func WithResolver(rs func(context.Context, string) (Location, error)) option {
 // Client represents a weather client
 // for the Norwegian Meteorological Institute.
 type Client struct {
-	UserAgent  string
+	userAgent  string
 	BaseURL    string
 	HTTPClient *http.Client
 	Resolve    func(context.Context, string) (Location, error)
+	Debug      io.Writer
 }
 
 // NewClient knows how to construct a new default client.
 func NewClient(opts ...option) (*Client, error) {
 	c := Client{
-		UserAgent:  "Meteo/" + libVersion + "https://github.com/qba73/meteo",
-		BaseURL:    "https://api.met.no",
+		userAgent:  userAgent,
+		BaseURL:    getEnv("API_MET_URL", "https://api.met.no"),
 		HTTPClient: http.DefaultClient,
 		Resolve:    resolve,
 	}
@@ -232,7 +249,7 @@ func NewClient(opts ...option) (*Client, error) {
 //
 // Place string should have format: "<place-name>,<country-code>",
 // for example: "London,UK", "Dublin,IE", "Paris,FR", "Warsaw,PL".
-func (c Client) GetWeather(ctx context.Context, place string) (Weather, error) {
+func (c *Client) GetWeather(ctx context.Context, place string) (Weather, error) {
 	location, err := c.Resolve(ctx, place)
 	if err != nil {
 		return Weather{}, err
@@ -242,7 +259,7 @@ func (c Client) GetWeather(ctx context.Context, place string) (Weather, error) {
 
 // GetWeatherForCoordinates returns current weather for a place
 // with given coordinates (lat, long)
-func (c Client) GetWeatherForCoordinates(ctx context.Context, lat, long float64) (Weather, error) {
+func (c *Client) GetWeatherForCoordinates(ctx context.Context, lat, long float64) (Weather, error) {
 	l := Location{
 		Lat:  lat,
 		Long: long,
@@ -251,7 +268,7 @@ func (c Client) GetWeatherForCoordinates(ctx context.Context, lat, long float64)
 
 }
 
-func (c Client) weather(ctx context.Context, location Location) (Weather, error) {
+func (c *Client) weather(ctx context.Context, location Location) (Weather, error) {
 	u := fmt.Sprintf("%s/weatherapi/locationforecast/2.0/compact?lat=%.2f&lon=%.2f", c.BaseURL, location.Lat, location.Long)
 
 	var nf forecastResponseCompact
@@ -264,13 +281,13 @@ func (c Client) weather(ctx context.Context, location Location) (Weather, error)
 	}
 
 	w := Weather{
-		Summary: nf.Properties.Timeseries[0].Data.Next1Hours.Summary.SymbolCode,
+		Summary: getSymbolDescription(nf.Properties.Timeseries[0].Data.Next1Hours.Summary.SymbolCode),
 		Temp:    nf.Properties.Timeseries[0].Data.Instant.Details.AirTemperature,
 	}
 	return w, nil
 }
 
-func (c Client) forecast(ctx context.Context, location Location) (Forecast, error) {
+func (c *Client) forecast(ctx context.Context, location Location) (Forecast, error) {
 	u := fmt.Sprintf("%s/weatherapi/locationforecast/2.0/compact?lat=%.2f&lon=%.2f", c.BaseURL, location.Lat, location.Long)
 
 	var nf forecastResponseCompact
@@ -288,33 +305,50 @@ func (c Client) forecast(ctx context.Context, location Location) (Forecast, erro
 	return w, nil
 }
 
-func (c Client) get(ctx context.Context, url string, data interface{}) error {
+func (c *Client) get(ctx context.Context, url string, data any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return fmt.Errorf("creating request: %w", err)
+		return fmt.Errorf("creating HTTP request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", c.UserAgent)
+	req.Header.Set("User-Agent", c.userAgent)
+
+	if c.Debug != nil {
+		reqDump, err := httputil.DumpRequestOut(req, true)
+		if err != nil {
+			return fmt.Errorf("dumping HTTP request: %w", err)
+		}
+		fmt.Fprintln(c.Debug, string(reqDump))
+		fmt.Fprintln(c.Debug)
+	}
 
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("sending request: %w", err)
 	}
 	defer res.Body.Close()
-
+	if c.Debug != nil {
+		c.dumpResponse(res)
+	}
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("got response code: %v", res.StatusCode)
 	}
-
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return fmt.Errorf("reading response body: %w", err)
 	}
-
 	if err := json.Unmarshal(body, data); err != nil {
 		return fmt.Errorf("unmarshaling response body: %w", err)
 	}
 	return nil
+}
+
+// dumpResponse writes a raw response data to the debug
+// output if set, or std error otherwise.
+func (c *Client) dumpResponse(res *http.Response) {
+	resDump, _ := httputil.DumpResponse(res, true)
+	fmt.Fprintln(c.Debug, string(resDump))
+	fmt.Fprintln(c.Debug)
 }
 
 // Weather represents weather conditions
