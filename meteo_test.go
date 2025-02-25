@@ -53,7 +53,7 @@ func verifyURIs(wanturi, goturi string, t *testing.T) {
 	}
 
 	if !cmp.Equal(wantU.Path, gotU.Path) {
-		t.Fatalf(cmp.Diff(wantU.Path, gotU.Path))
+		t.Fatal(cmp.Diff(wantU.Path, gotU.Path))
 	}
 
 	wantQuery, err := url.ParseQuery(wantU.RawQuery)

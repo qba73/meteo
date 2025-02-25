@@ -265,7 +265,6 @@ func (c *Client) GetWeatherForCoordinates(ctx context.Context, lat, long float64
 		Long: long,
 	}
 	return c.weather(ctx, l)
-
 }
 
 func (c *Client) weather(ctx context.Context, location Location) (Weather, error) {
