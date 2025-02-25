@@ -19,3 +19,7 @@ vendor/
 
 # Mac stuff
 .DS_Store
+
+# Binary
+meteo
+
