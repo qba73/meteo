@@ -29,7 +29,8 @@ func main() {
 	locations := []string{
 		"Vilnius,LT", "Dublin,IE", "London,UK", "Berlin,DE",
 		"Belfast,UK", "Castlebar,IE", "Killarney,IE",
-		"Warsaw,PL", "Lodz,PL", "Vienna,AT"}
+		"Warsaw,PL", "Lodz,PL", "Vienna,AT",
+	}
 
 	for _, loc := range locations {
 		go getWeather(loc, ch)
