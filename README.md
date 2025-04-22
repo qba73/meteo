@@ -5,7 +5,7 @@
 
 # meteo
 
-Meteo is a Go client library for the weather and meteorological forecast from [Yr](https://www.yr.no/en).
+`meteo` is a Go client library for the weather and meteorological forecast from [Yr](https://www.yr.no/en).
 
 > Weather forecast from Yr, delivered by the Norwegian Meteorological Institute and NRK.
 
