@@ -1,0 +1,17 @@
+name: CVE Check
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  cve_scan:
+    name: Run Govulncheck CVE Scanner
+    runs-on: ubuntu-latest
+    steps:
+        - uses: golang/govulncheck-action@v1
+          with:
+            go-version-input: 'stable'
+            check-latest: true
+            go-package: ./...
+  
