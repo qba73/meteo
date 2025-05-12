@@ -3,7 +3,7 @@
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/qba73/meteo)
 [![CodeQL](https://github.com/qba73/meteo/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/qba73/meteo/actions/workflows/github-code-scanning/codeql)
 [![Scorecard](https://github.com/qba73/meteo/actions/workflows/scorecard.yml/badge.svg)](https://github.com/qba73/meteo/actions/workflows/scorecard.yml)
-[![CVE Scan](https://github.com/qba73/meteo/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/qba73/meteo/actions/workflows/govulncheck.yml)
+[![CVE Scan](https://github.com/qba73/meteo/actions/workflows/govulncheck.yml/badge.svg?branch=main)](https://github.com/qba73/meteo/actions/workflows/govulncheck.yml)
 
 
 # meteo
