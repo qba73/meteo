@@ -2,6 +2,7 @@
 ![GitHub](https://img.shields.io/github/license/qba73/meteo)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/qba73/meteo)
 [![CodeQL](https://github.com/qba73/meteo/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/qba73/meteo/actions/workflows/github-code-scanning/codeql)
+[![Scorecard](https://github.com/qba73/meteo/actions/workflows/scorecard.yml/badge.svg)](https://github.com/qba73/meteo/actions/workflows/scorecard.yml)
 
 
 # meteo
