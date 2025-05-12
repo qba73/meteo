@@ -286,6 +286,14 @@ func (c *Client) weather(ctx context.Context, location Location) (Weather, error
 	return w, nil
 }
 
+func (c *Client) Forecast(ctx context.Context, lat, long float64) (Forecast, error) {
+	l := Location{
+		Lat:  lat,
+		Long: long,
+	}
+	return c.forecast(ctx, l)
+}
+
 func (c *Client) forecast(ctx context.Context, location Location) (Forecast, error) {
 	u := fmt.Sprintf("%s/weatherapi/locationforecast/2.0/compact?lat=%.2f&lon=%.2f", c.BaseURL, location.Lat, location.Long)
 
@@ -345,7 +353,11 @@ func (c *Client) get(ctx context.Context, url string, data any) error {
 // dumpResponse writes a raw response data to the debug
 // output if set, or std error otherwise.
 func (c *Client) dumpResponse(res *http.Response) {
-	resDump, _ := httputil.DumpResponse(res, true)
+	resDump, err := httputil.DumpResponse(res, true)
+	if err != nil {
+		fmt.Fprintf(c.Debug, "%+v\n", err)
+		return
+	}
 	fmt.Fprintln(c.Debug, string(resDump))
 	fmt.Fprintln(c.Debug)
 }
