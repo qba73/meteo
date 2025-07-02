@@ -146,27 +146,28 @@ func toPlaceAndCountry(location string) (string, string, error) {
 	return bits[0], bits[1], nil
 }
 
+var weatherIconDescription = map[string]string{
+	"rain":                   "rain",
+	"heavyrain":              "heavy rain",
+	"lightrain":              "light rain",
+	"cloudy":                 "cloudy",
+	"heavyrainshowers_night": "heavy rain showers",
+	"heavyrainshowers_day":   "heavy rain showers",
+	"rainshowers_day":        "rain showers",
+	"rainshowers_night":      "rain showers",
+	"lightrainshowers_day":   "light showers",
+	"lightrainshowers_night": "light showers",
+	"partlycloudy_day":       "partly cloudy",
+	"partlycloudy_night":     "partly cloudy",
+	"fair_day":               "fair",
+	"fair_night":             "fair",
+	"fog":                    "fog",
+	"clearsky_night":         "clear sky",
+	"clearsky_day":           "clear sky",
+}
+
 func getSymbolDescription(symbol string) string {
-	symbols := map[string]string{
-		"rain":                   "rain",
-		"heavyrain":              "heavy rain",
-		"lightrain":              "light rain",
-		"cloudy":                 "cloudy",
-		"heavyrainshowers_night": "heavy rain showers",
-		"heavyrainshowers_day":   "heavy rain showers",
-		"rainshowers_day":        "rain showers",
-		"rainshowers_night":      "rain showers",
-		"lightrainshowers_day":   "light showers",
-		"lightrainshowers_night": "light showers",
-		"partlycloudy_day":       "partly cloudy",
-		"partlycloudy_night":     "partly cloudy",
-		"fair_day":               "fair",
-		"fair_night":             "fair",
-		"fog":                    "fog",
-		"clearsky_night":         "clear sky",
-		"clearsky_day":           "clear sky",
-	}
-	desc, ok := symbols[symbol]
+	desc, ok := weatherIconDescription[symbol]
 	if !ok {
 		return ""
 	}
@@ -187,7 +188,7 @@ func WithUserAgent(ua string) option {
 		if ua == "" {
 			return errors.New("nil user agent")
 		}
-		c.userAgent = ua
+		c.UserAgent = ua
 		return nil
 	}
 }
@@ -222,7 +223,7 @@ func WithResolver(rs func(context.Context, string) (Location, error)) option {
 // Client represents a weather client
 // for the Norwegian Meteorological Institute.
 type Client struct {
-	userAgent  string
+	UserAgent  string
 	BaseURL    string
 	HTTPClient *http.Client
 	Resolve    func(context.Context, string) (Location, error)
@@ -232,7 +233,7 @@ type Client struct {
 // NewClient knows how to construct a new default client.
 func NewClient(opts ...option) (*Client, error) {
 	c := Client{
-		userAgent:  userAgent,
+		UserAgent:  userAgent,
 		BaseURL:    getEnv("API_MET_URL", "https://api.met.no"),
 		HTTPClient: http.DefaultClient,
 		Resolve:    resolve,
@@ -318,7 +319,7 @@ func (c *Client) get(ctx context.Context, url string, data any) error {
 		return fmt.Errorf("creating HTTP request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("User-Agent", c.UserAgent)
 
 	if c.Debug != nil {
 		reqDump, err := httputil.DumpRequestOut(req, true)
@@ -386,24 +387,4 @@ func GetWeather(location string) (Weather, error) {
 		return Weather{}, err
 	}
 	return c.GetWeather(ctx, location)
-}
-
-// RunCLI is a main function that runs the cli machinery.
-func RunWeatherCLI() int {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s LOCATION\n\nExmple: %[1]s London,UK\n", os.Args[0])
-		return 1
-	}
-	location := strings.Join(os.Args[1:], " ")
-	w, err := GetWeather(location)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	fmt.Fprintln(os.Stdout, w)
-	return 0
-}
-
-func RunForecastCLI() int {
-	return 0
 }
